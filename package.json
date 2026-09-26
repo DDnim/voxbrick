@@ -1,0 +1,21 @@
+{
+  "name": "voxbrick",
+  "version": "0.1.0",
+  "description": "把体素模型拆成普通长方形积木，生成 3D 预览、零件清单和逐层拼装步骤",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/",
+    "build": "node scripts/build.mjs",
+    "dev": "node scripts/build.mjs --watch",
+    "works": "node scripts/gen-works.mjs",
+    "stats": "node scripts/stats.mjs",
+    "import-vox": "node scripts/import-vox.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "puppeteer-core": "^25.12.0",
+    "three": "^0.186.1"
+  }
+}

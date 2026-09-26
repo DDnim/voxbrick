@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Voxbrick 作品文件",
+  "description": "一件作品 = 一个体素模型 + 元数据。详细说明见 docs/work-format.md。颜色 id 的完整列表在 src/core/catalog.js。",
+  "type": "object",
+  "required": ["format", "id", "title", "description", "author", "license", "unit", "palette", "layers"],
+  "additionalProperties": false,
+  "properties": {
+    "format": { "const": 1, "description": "文件格式版本" },
+    "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$", "description": "唯一 id，也是文件名（works/<id>.json）" },
+    "title": { "type": "string", "minLength": 1 },
+    "description": { "type": "string", "minLength": 1 },
+    "author": {
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": { "name": { "type": "string", "minLength": 1 }, "url": { "type": "string", "format": "uri" } }
+    },
+    "license": { "enum": ["CC0-1.0", "CC-BY-4.0", "CC-BY-SA-4.0"] },
+    "unit": { "enum": ["brick", "plate"], "description": "brick：1 层 = 1 块砖高（9.6mm）；plate：1 层 = 1 块薄板高（3.2mm）" },
+    "seed": { "type": "integer", "description": "拼砖程序的随机种子，默认 1。拼不连通时可以换一个试试" },
+    "palette": {
+      "type": "object",
+      "description": "字符 → 颜色 id",
+      "propertyNames": { "pattern": "^[^.\\s]$" },
+      "additionalProperties": { "type": "string" }
+    },
+    "sections": {
+      "type": "array",
+      "description": "拼装步骤标题里显示的部位名",
+      "items": {
+        "type": "object",
+        "required": ["from", "to", "name"],
+        "additionalProperties": false,
+        "properties": { "from": { "type": "integer", "minimum": 0 }, "to": { "type": "integer", "minimum": 0 }, "name": { "type": "string" } }
+      }
+    },
+    "layers": {
+      "type": "array",
+      "minItems": 1,
+      "description": "layers[层][行] = 一行字符串。层从下往上，行从后往前（最后一行是正面），字符从左往右。'.' 是空格",
+      "items": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+    }
+  }
+}

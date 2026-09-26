@@ -1,0 +1,46 @@
+# 投稿作品
+
+欢迎用 PR 添加你自己的作品。一件作品就是 `works/` 下面的一个 JSON 文件，格式见 [docs/work-format.md](docs/work-format.md)。
+
+## 能投什么
+
+- **自己原创的角色、动物、物品**，或者**已经没有版权的题材**（民间传说、传统工艺品、常见动植物、日常物品等）。
+- **不能投**：动画、漫画、游戏、电影里的角色，以及其他有权利人的形象、商标、标志。不确定的话先开一个 issue 问。
+- 文件里不要出现积木品牌的名字（测试会检查）。本项目只说“积木”“砖”“薄板”。
+- 作品需要用开放许可：`CC0-1.0`（放弃权利）、`CC-BY-4.0`（署名）或 `CC-BY-SA-4.0`（署名、相同方式共享）。
+
+## 做作品的三种方法
+
+1. **MagicaVoxel 画**（推荐）：在 [MagicaVoxel](https://ephtracy.github.io/) 里画好保存成 `.vox`，然后
+   ```sh
+   npm run import-vox -- my-cat.vox --id my-cat --title 我的猫 --author 你的名字 --unit plate
+   ```
+   颜色会换成颜色目录里最接近的颜色。MagicaVoxel 里 y=0 那一面是作品的正面。
+2. **直接写 JSON**：小作品可以手写 `layers`，一层一层像画字符画一样。
+3. **写代码生成**：在 `works-src/<id>.js` 里导出 `meta` 和 `build()`（返回 `VoxelGrid`），
+   运行 `npm run works` 生成 `works/<id>.json`。适合对称、有规律的造型，参考现有的几个例子。
+
+也可以先在页面上预览：打开 `dist/voxbrick.html`，点“导入作品”选你的 `.json` 或 `.vox`。
+
+## 提交前
+
+```sh
+npm install
+npm test          # 格式、许可、能不能连成一整块、站不站得稳、步骤能不能拼
+npm run build     # 生成 dist/voxbrick.html，打开看看效果
+npm run stats     # 每个作品的零件数、尺寸和检查结果
+```
+
+测试不过时：
+- “没有连成一整块”：先在 JSON 里加 `"seed": 2`（3、4…）换几种排法试试；还不行就看 `npm run stats` 列出的孤立零件，把那附近的造型改一下（见格式说明的“怎样的模型拼得出来”）。
+- “重心在底面外”：加宽底部，或者加一块底板。
+
+## PR 里写什么
+
+- 作品是什么、灵感来源，以及“这是原创 / 无版权题材”的说明
+- 页面截图一张（成品 3D 视图）
+- 用的是哪种方法做的
+
+## 改框架本身
+
+改拼砖程序、页面、格式的 PR 也欢迎。改格式的话请同时更新 `docs/work-format.md` 和 `schema/work.schema.json`，并保证现有作品的测试都能通过。

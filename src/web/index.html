@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Voxbrick 积木拼装图</title>
+    <!-- STYLE -->
+  </head>
+  <body data-tab="model">
+    <header>
+      <div class="title">
+        <h1><span id="work-title"></span> <small>Voxbrick · 积木拼装图</small></h1>
+        <nav id="works" class="variants"></nav>
+        <nav class="tabs">
+          <button data-tab="model">成品</button>
+          <button data-tab="parts">零件清单</button>
+          <button data-tab="steps">拼装步骤</button>
+        </nav>
+      </div>
+      <div id="summary"></div>
+    </header>
+    <main>
+      <div class="stage">
+        <canvas id="view"></canvas>
+        <div id="tooltip" hidden></div>
+        <button id="reset-cam" title="回到默认视角">⟲ 视角</button>
+        <p class="stage-hint">拖动旋转 · 滚轮缩放 · 右键平移</p>
+      </div>
+      <aside>
+        <section id="intro" class="panel">
+          <h2 id="intro-title"></h2>
+          <p id="intro-body"></p>
+          <p id="intro-meta" class="hint"></p>
+          <p>全部用<strong>最普通的长方形积木</strong>拼成：砖或薄板，1×1 到 2×8 共 11 种尺寸，不用人偶、斜面这些特殊零件。零件的排法是程序按层自动算的：</p>
+          <ul>
+            <li>上下层尽量错缝，互相咬住；</li>
+            <li>悬在外面的零件，都至少有一个凸点扣在有支撑的地方；</li>
+            <li>最后检查所有零件连成一整块、重心落在底面范围内。</li>
+          </ul>
+          <p>看每种零件要几块、什么颜色 → <a href="#parts" data-goto="parts">零件清单</a></p>
+          <p>一步一步怎么拼 → <a href="#steps" data-goto="steps">拼装步骤</a></p>
+          <h3>导入 / 导出</h3>
+          <p class="hint">导入的作品只在这个浏览器标签页里预览，不会上传。想加到作品列表里，请按仓库里的 CONTRIBUTING.md 提交 PR。</p>
+          <div class="exports">
+            <button id="import">导入作品（.json / .vox）</button>
+            <input id="import-file" type="file" accept=".json,.vox" hidden />
+            <button id="dl-work">下载作品文件（.json）</button>
+            <button id="dl-vox">下载 MagicaVoxel 文件（.vox）</button>
+          </div>
+        </section>
+        <section id="bom" class="panel"></section>
+        <section id="steps" class="panel">
+          <div class="step-head">
+            <div id="step-no"></div>
+            <h2 id="step-title"></h2>
+          </div>
+          <div class="step-nav">
+            <button id="first" title="第一步">⏮</button>
+            <button id="prev" title="上一步（←）">◀ 上一步</button>
+            <input id="step-range" type="range" min="0" value="0" />
+            <button id="next" title="下一步（→ 或空格）">下一步 ▶</button>
+            <button id="last" title="最后一步">⏭</button>
+          </div>
+          <div class="progress"><div id="step-progress"></div></div>
+          <div id="step-count"></div>
+          <p id="step-text"></p>
+          <h3>这一步要用</h3>
+          <div id="step-parts"></div>
+          <div id="step-maps"></div>
+        </section>
+      </aside>
+    </main>
+    <!-- SCRIPT -->
+  </body>
+</html>
