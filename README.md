@@ -21,6 +21,10 @@ npm test
 页面用 `?w=<作品 id>` 切换作品，比如 `dist/voxbrick.html?w=lucky-cat`。
 右上角的 EN / 中文 按钮切换界面语言（记在浏览器里；也可以用 `?lang=en` 指定）。
 
+只想自己看、不公开的作品（比如有版权的角色）放在 `works-local/`（已在 .gitignore 里）：
+`works-local/*.js` 用 `npm run works:local` 生成 JSON，`npm run build:local` 输出带上它们的 `dist/voxbrick-local.html`。
+普通的 `npm run build` 不会包含这些作品。
+
 ## 现在有的作品
 
 | 作品 | 零件 | 说明 |

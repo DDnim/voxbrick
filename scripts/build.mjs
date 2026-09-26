@@ -1,11 +1,14 @@
 // 打包成一个独立的 HTML（JS、CSS、works/*.json 全部内联），双击就能打开，不需要服务器。
 // node scripts/build.mjs          → dist/voxbrick.html
 // node scripts/build.mjs --watch  → 改代码或作品自动重新打包
+// node scripts/build.mjs --local  → 再加上 works-local/ 里只在自己电脑上用的作品，输出 dist/voxbrick-local.html
 import * as esbuild from 'esbuild';
 import { readFile, readdir, writeFile, mkdir } from 'node:fs/promises';
 
 const root = new URL('..', import.meta.url).pathname;
-const out = `${root}dist/voxbrick.html`;
+const local = process.argv.includes('--local');
+const out = `${root}dist/voxbrick${local ? '-local' : ''}.html`;
+const dirs = [`${root}works`, ...(local ? [`${root}works-local`] : [])];
 
 // import WORKS from 'virtual:works' → works/ 下所有作品，按标题排序
 const works = {
@@ -13,10 +16,12 @@ const works = {
   setup(build) {
     build.onResolve({ filter: /^virtual:works$/ }, () => ({ path: 'works', namespace: 'works' }));
     build.onLoad({ filter: /.*/, namespace: 'works' }, async () => {
-      const files = (await readdir(`${root}works`)).filter((f) => f.endsWith('.json')).sort();
-      const list = await Promise.all(files.map(async (f) => JSON.parse(await readFile(`${root}works/${f}`, 'utf8'))));
+      const files = [];
+      for (const dir of dirs)
+        for (const f of await readdir(dir).catch(() => [])) if (f.endsWith('.json')) files.push(`${dir}/${f}`);
+      const list = await Promise.all(files.map(async (f) => JSON.parse(await readFile(f, 'utf8'))));
       list.sort((a, b) => a.title.localeCompare(b.title, 'zh'));
-      return { contents: `export default ${JSON.stringify(list)};`, loader: 'js', watchDirs: [`${root}works`] };
+      return { contents: `export default ${JSON.stringify(list)};`, loader: 'js', watchDirs: dirs };
     });
   },
 };

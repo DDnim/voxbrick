@@ -11,7 +11,9 @@
     "dev": "node scripts/build.mjs --watch",
     "works": "node scripts/gen-works.mjs",
     "stats": "node scripts/stats.mjs",
-    "import-vox": "node scripts/import-vox.mjs"
+    "import-vox": "node scripts/import-vox.mjs",
+    "build:local": "node scripts/build.mjs --local",
+    "works:local": "node scripts/gen-works.mjs --local"
   },
   "devDependencies": {
     "esbuild": "^0.28.2",
