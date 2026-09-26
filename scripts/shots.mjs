@@ -43,14 +43,28 @@ for (const id of ids) {
 // 导入：把第一个作品导出成 .vox 再从页面导入
 const vox = `${outDir}/import-test.vox`;
 await writeFile(vox, writeVox(workToGrid(JSON.parse(readFileSync(`${root}works/${ids[0]}.json`, 'utf8')))));
-await page.goto(url('#model'));
+await page.goto(url(`?w=${ids[0]}#steps-5`));
 await ready();
-const [chooser] = await Promise.all([page.waitForFileChooser(), page.click('#import')]);
-await Promise.all([page.waitForNavigation(), chooser.accept([vox])]);
+await page.click('#open-gallery');
+await wait(500);
+await page.screenshot({ path: `${outDir}/gallery.png` });
+await page.keyboard.press('Escape');
+await page.click('#open-import');
+const [chooser] = await Promise.all([page.waitForFileChooser(), page.click('#drop-zone')]);
+await chooser.accept([vox]);
+await page.waitForSelector('#import-vox-options:not([hidden])');
+await page.click('input[name="unit"][value="brick"]');
+await wait(300);
+await page.screenshot({ path: `${outDir}/import-dialog.png` });
+await Promise.all([page.waitForNavigation(), page.click('#import-go')]);
 await ready();
-const imported = await page.evaluate(() => ({ id: window.__voxbrick.model.work.id, n: window.__voxbrick.model.bricks.length, title: document.title }));
+const imported = await page.evaluate(() => ({ id: window.__voxbrick.model.work.id, unit: window.__voxbrick.model.work.unit, n: window.__voxbrick.model.bricks.length, tab: document.body.dataset.tab, banner: !document.querySelector('#imported-banner').hidden }));
 await wait(1000);
 await page.screenshot({ path: `${outDir}/import.png` });
+// 导出菜单
+await page.click('#open-export');
+await wait(200);
+await page.screenshot({ path: `${outDir}/export-menu.png` });
 
 await page.setViewport({ width: 390, height: 844, isMobile: true });
 await page.goto(url(`?w=${ids[0]}#steps-1`));

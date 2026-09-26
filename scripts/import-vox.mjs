@@ -1,5 +1,5 @@
 // MagicaVoxel .vox → works/<id>.json
-// node scripts/import-vox.mjs my-cat.vox --id my-cat --title 我的猫 --author 名字 [--unit plate|brick] [--license CC-BY-4.0]
+// node scripts/import-vox.mjs my-cat.vox --id my-cat --title 我的猫 --author 名字 [--unit brick|plate] [--license CC-BY-4.0]
 import { readFile, writeFile } from 'node:fs/promises';
 import { parseArgs } from 'node:util';
 import { readVox } from '../src/core/vox.js';
@@ -12,14 +12,14 @@ const { values, positionals } = parseArgs({
     title: { type: 'string' },
     author: { type: 'string' },
     description: { type: 'string', default: '' },
-    unit: { type: 'string', default: 'plate' },
+    unit: { type: 'string', default: 'brick' },
     license: { type: 'string', default: 'CC-BY-4.0' },
     out: { type: 'string' },
   },
 });
 const [file] = positionals;
 if (!file || !values.id || !values.title || !values.author) {
-  console.error('用法: node scripts/import-vox.mjs <文件.vox> --id <id> --title <标题> --author <作者> [--unit plate|brick] [--description ...] [--license CC-BY-4.0]');
+  console.error('用法: node scripts/import-vox.mjs <文件.vox> --id <id> --title <标题> --author <作者> [--unit brick|plate] [--description ...] [--license CC-BY-4.0]');
   process.exit(1);
 }
 const work = gridToWork(readVox(await readFile(file)), {

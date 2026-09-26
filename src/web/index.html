@@ -10,21 +10,33 @@
     <header>
       <div class="title">
         <h1><span id="work-title"></span> <small>Voxbrick · 积木拼装图</small></h1>
-        <nav id="works" class="variants"></nav>
+        <button id="open-gallery" class="pill" title="浏览全部作品（G）">▦ 作品库 <span id="work-count"></span></button>
         <nav class="tabs">
           <button data-tab="model">成品</button>
           <button data-tab="parts">零件清单</button>
           <button data-tab="steps">拼装步骤</button>
         </nav>
+        <div class="file-actions">
+          <button id="open-import" class="pill" title="导入 .json 或 .vox，也可以直接把文件拖进页面">导入</button>
+          <div class="menu">
+            <button id="open-export" class="pill" aria-haspopup="true" aria-expanded="false">导出 ▾</button>
+            <div id="export-menu" class="menu-list" hidden>
+              <button data-export="json"><b>作品文件 .json</b><small>投稿用，也能再导入</small></button>
+              <button data-export="vox"><b>MagicaVoxel .vox</b><small>在体素编辑器里接着改</small></button>
+              <button data-export="csv"><b>零件清单 .csv</b><small>按颜色和尺寸统计的数量</small></button>
+            </div>
+          </div>
+        </div>
       </div>
       <div id="summary"></div>
     </header>
+    <div id="imported-banner" class="banner" hidden></div>
     <main>
       <div class="stage">
         <canvas id="view"></canvas>
         <div id="tooltip" hidden></div>
         <button id="reset-cam" title="回到默认视角">⟲ 视角</button>
-        <p class="stage-hint">拖动旋转 · 滚轮缩放 · 右键平移</p>
+        <p class="stage-hint" id="stage-hint">拖动旋转 · 滚轮缩放 · 右键平移</p>
       </div>
       <aside>
         <section id="intro" class="panel">
@@ -39,14 +51,7 @@
           </ul>
           <p>看每种零件要几块、什么颜色 → <a href="#parts" data-goto="parts">零件清单</a></p>
           <p>一步一步怎么拼 → <a href="#steps" data-goto="steps">拼装步骤</a></p>
-          <h3>导入 / 导出</h3>
-          <p class="hint">导入的作品只在这个浏览器标签页里预览，不会上传。想加到作品列表里，请按仓库里的 CONTRIBUTING.md 提交 PR。</p>
-          <div class="exports">
-            <button id="import">导入作品（.json / .vox）</button>
-            <input id="import-file" type="file" accept=".json,.vox" hidden />
-            <button id="dl-work">下载作品文件（.json）</button>
-            <button id="dl-vox">下载 MagicaVoxel 文件（.vox）</button>
-          </div>
+          <p class="hint">想把自己的作品放进作品库：用“导入”预览，没问题的话按仓库里的 CONTRIBUTING.md 提交 PR。</p>
         </section>
         <section id="bom" class="panel"></section>
         <section id="steps" class="panel">
@@ -70,6 +75,39 @@
         </section>
       </aside>
     </main>
+    <dialog id="gallery" class="modal">
+      <div class="modal-head">
+        <h2>作品库</h2>
+        <input id="gallery-search" type="search" placeholder="搜索标题、作者、说明" autocomplete="off" />
+        <button class="close" data-close title="关闭（Esc）">✕</button>
+      </div>
+      <div id="gallery-grid" class="gallery-grid"></div>
+      <p class="hint modal-foot">想加自己的作品？用右上角“导入”先预览，再按 CONTRIBUTING.md 提交 PR。</p>
+    </dialog>
+    <dialog id="importer" class="modal narrow">
+      <div class="modal-head">
+        <h2>导入作品</h2>
+        <button class="close" data-close title="关闭（Esc）">✕</button>
+      </div>
+      <label id="drop-zone" class="drop-zone">
+        <input id="import-file" type="file" accept=".json,.vox" hidden />
+        <strong>把文件拖到这里，或点这里选择</strong>
+        <span>作品文件 .json，或 MagicaVoxel 的 .vox</span>
+      </label>
+      <div id="import-vox-options" hidden>
+        <div id="import-file-name" class="file-name"></div>
+        <fieldset class="unit-choice">
+          <legend>一格体素用什么拼</legend>
+          <label><input type="radio" name="unit" value="brick" checked /> <b>砖</b> <small>1 格接近正方体（高是宽的 1.2 倍）。在编辑器里按正常比例画的模型选这个</small></label>
+          <label><input type="radio" name="unit" value="plate" /> <b>薄板</b> <small>1 格高只有宽的 0.4 倍，模型会被压扁。适合竖向按 2.5 倍格数画的模型，能做出更细的五官</small></label>
+        </fieldset>
+        <label class="field">标题 <input id="import-title" type="text" /></label>
+        <button id="import-go" class="primary">预览</button>
+      </div>
+      <ul id="import-errors" class="errors" hidden></ul>
+      <p class="hint">只在这个浏览器标签页里预览，不会上传。</p>
+    </dialog>
+    <div id="drop-overlay" hidden>松开鼠标导入作品</div>
     <!-- SCRIPT -->
   </body>
 </html>

@@ -13,9 +13,11 @@
 
 1. **MagicaVoxel 画**（推荐）：在 [MagicaVoxel](https://ephtracy.github.io/) 里画好保存成 `.vox`，然后
    ```sh
-   npm run import-vox -- my-cat.vox --id my-cat --title 我的猫 --author 你的名字 --unit plate
+   npm run import-vox -- my-cat.vox --id my-cat --title 我的猫 --author 你的名字
    ```
    颜色会换成颜色目录里最接近的颜色。MagicaVoxel 里 y=0 那一面是作品的正面。
+   默认一格用一块砖（接近正方体，编辑器里的比例基本不变）。加 `--unit plate` 改用薄板：一格只有 0.4 倍高，
+   模型要在竖直方向画 2.5 倍的格数，换来更细的五官。
 2. **直接写 JSON**：小作品可以手写 `layers`，一层一层像画字符画一样。
 3. **写代码生成**：在 `works-src/<id>.js` 里导出 `meta` 和 `build()`（返回 `VoxelGrid`），
    运行 `npm run works` 生成 `works/<id>.json`。适合对称、有规律的造型，参考现有的几个例子。

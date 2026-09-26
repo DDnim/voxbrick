@@ -45,9 +45,7 @@ const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt
 function renderHeader() {
   document.title = `${work.title} · Voxbrick 积木拼装图`;
   $('#work-title').textContent = work.title;
-  $('#works').innerHTML =
-    WORKS.map((w) => `<a href="?w=${w.id}" class="${w.id === work.id && !imported ? 'active' : ''}">${escapeHtml(w.title)}</a>`).join('') +
-    (imported ? `<a href="?w=${IMPORTED}" class="active">导入：${escapeHtml(work.title)}</a>` : '');
+  $('#work-count').textContent = WORKS.length;
   const colors = new Set(model.bom.map((r) => r.color)).size;
   const parts = new Set(model.bom.map((r) => r.part)).size;
   const [w, d, h] = model.size.cm.map((v) => v.toFixed(1));
@@ -104,9 +102,10 @@ function renderBom() {
         </section>`;
       })
       .join('') +
-    `<div class="exports"><button id="dl-csv">下载零件清单（CSV）</button></div>`;
+    `<div class="exports"><button data-export="csv">下载零件清单（CSV）</button></div>`;
 
   $('#bom').addEventListener('click', (e) => {
+    if (e.target.closest('[data-export]')) return exportAs('csv');
     const row = e.target.closest('.bom-row, .color-head');
     if (!row) return;
     const key = `${row.dataset.color}|${row.dataset.part ?? ''}`;
@@ -121,14 +120,6 @@ function renderBom() {
     const { color, part } = row.dataset;
     viewer.highlight((b) => b.color === color && (!part || b.part === part));
   });
-  $('#dl-csv').onclick = () => {
-    const lines = [['零件', '名称', '颜色', '颜色 id', '色值', '数量'].join(',')];
-    for (const r of model.bom) {
-      const c = COLORS[r.color];
-      lines.push([r.part, PART_BY_ID[r.part].name, c.zh, r.color, c.hex, r.count].join(','));
-    }
-    download(`${work.id}-parts.csv`, '﻿' + lines.join('\n'), 'text/csv');
-  };
 }
 
 function download(name, data, type) {
@@ -139,39 +130,215 @@ function download(name, data, type) {
   URL.revokeObjectURL(a.href);
 }
 
-// ---------- 导入 / 导出 ----------
-function setupFiles() {
-  $('#dl-work').onclick = () => download(`${work.id}.json`, stringifyWork(work), 'application/json');
-  $('#dl-vox').onclick = () => download(`${work.id}.vox`, writeVox(workToGrid(work)), 'application/octet-stream');
-  const input = $('#import-file');
-  $('#import').onclick = () => input.click();
-  input.onchange = async () => {
-    const file = input.files[0];
-    if (!file) return;
-    input.value = '';
-    try {
-      let next;
-      if (file.name.toLowerCase().endsWith('.vox')) {
-        const grid = readVox(await file.arrayBuffer());
-        const id = file.name.replace(/\.vox$/i, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'my-work';
-        const plate = confirm('这个 .vox 按薄板拼吗？\n确定 = 薄板（1 格 = 3.2mm 高）\n取消 = 砖（1 格 = 9.6mm 高）');
-        next = gridToWork(grid, {
-          id,
-          title: file.name.replace(/\.vox$/i, ''),
-          description: '从 MagicaVoxel 导入的作品。',
-          author: { name: '（填你的名字）' },
-          license: 'CC-BY-4.0',
-          unit: plate ? 'plate' : 'brick',
-        });
-      } else next = JSON.parse(await file.text());
-      const errors = validateWork(next);
-      if (errors.length) throw new Error(errors.join('\n'));
-      sessionStorage.setItem('voxbrick:imported', JSON.stringify(next));
-      location.href = `?w=${IMPORTED}`;
-    } catch (e) {
-      alert(`导入失败：\n${e.message}`);
+// ---------- 导出 ----------
+function exportAs(kind) {
+  if (kind === 'json') download(`${work.id}.json`, stringifyWork(work), 'application/json');
+  if (kind === 'vox') download(`${work.id}.vox`, writeVox(workToGrid(work)), 'application/octet-stream');
+  if (kind === 'csv') {
+    const lines = [['零件', '名称', '颜色', '颜色 id', '色值', '数量'].join(',')];
+    for (const r of model.bom) {
+      const c = COLORS[r.color];
+      lines.push([r.part, PART_BY_ID[r.part].name, c.zh, r.color, c.hex, r.count].join(','));
     }
+    download(`${work.id}-parts.csv`, '﻿' + lines.join('\n'), 'text/csv');
+  }
+}
+
+function setupExport() {
+  const button = $('#open-export');
+  const menu = $('#export-menu');
+  const toggle = (open) => {
+    menu.hidden = !open;
+    button.setAttribute('aria-expanded', String(open));
   };
+  button.onclick = (e) => {
+    e.stopPropagation();
+    toggle(menu.hidden);
+  };
+  menu.onclick = (e) => {
+    const item = e.target.closest('[data-export]');
+    if (!item) return;
+    exportAs(item.dataset.export);
+    toggle(false);
+  };
+  document.addEventListener('click', () => toggle(false));
+}
+
+// ---------- 导入 ----------
+// .json 直接预览；.vox 先让人选砖还是薄板、填个标题
+let pendingVox = null;
+const slug = (name) =>
+  name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'my-work';
+
+function showImportErrors(errors) {
+  const list = $('#import-errors');
+  list.hidden = !errors.length;
+  list.innerHTML = errors.map((e) => `<li>${escapeHtml(e)}</li>`).join('');
+}
+
+function preview(next) {
+  const errors = validateWork(next);
+  if (errors.length) return showImportErrors(errors);
+  sessionStorage.setItem('voxbrick:imported', JSON.stringify(next));
+  location.href = `?w=${IMPORTED}${location.hash}`;
+}
+
+async function importFile(file) {
+  $('#importer').open || $('#importer').showModal();
+  showImportErrors([]);
+  $('#import-vox-options').hidden = true;
+  pendingVox = null;
+  try {
+    if (file.name.toLowerCase().endsWith('.vox')) {
+      pendingVox = { grid: readVox(await file.arrayBuffer()), name: file.name.replace(/\.vox$/i, '') };
+      const b = pendingVox.grid.bounds();
+      $('#import-file-name').textContent = `${file.name} · ${b.x1 - b.x0}×${b.z1 - b.z0} 格，高 ${b.y1 - b.y0} 格，${pendingVox.grid.size} 个体素`;
+      $('#import-title').value = pendingVox.name;
+      $('#import-vox-options').hidden = false;
+    } else if (file.name.toLowerCase().endsWith('.json')) {
+      let next;
+      try {
+        next = JSON.parse(await file.text());
+      } catch (e) {
+        return showImportErrors([`不是合法的 JSON：${e.message}`]);
+      }
+      preview(next);
+    } else showImportErrors(['只支持 .json（作品文件）和 .vox（MagicaVoxel）']);
+  } catch (e) {
+    showImportErrors([e.message]);
+  }
+}
+
+function setupImport() {
+  const dialog = $('#importer');
+  const input = $('#import-file');
+  $('#open-import').onclick = () => {
+    showImportErrors([]);
+    $('#import-vox-options').hidden = true;
+    dialog.showModal();
+  };
+  input.onchange = () => {
+    if (input.files[0]) importFile(input.files[0]);
+    input.value = '';
+  };
+  $('#import-go').onclick = () => {
+    if (!pendingVox) return;
+    const title = $('#import-title').value.trim() || pendingVox.name;
+    preview(
+      gridToWork(pendingVox.grid, {
+        id: slug(pendingVox.name),
+        title,
+        description: `${title}（从 MagicaVoxel 导入）`,
+        author: { name: '（填你的名字）' },
+        license: 'CC-BY-4.0',
+        unit: document.querySelector('input[name="unit"]:checked').value,
+      }),
+    );
+  };
+  // 文件可以拖到对话框里，也可以直接拖到页面任何地方
+  const zone = $('#drop-zone');
+  const overlay = $('#drop-overlay');
+  let depth = 0;
+  const hasFiles = (e) => [...(e.dataTransfer?.types ?? [])].includes('Files');
+  addEventListener('dragenter', (e) => {
+    if (!hasFiles(e)) return;
+    depth++;
+    overlay.hidden = dialog.open;
+    zone.classList.add('over');
+  });
+  addEventListener('dragleave', () => {
+    if (--depth <= 0) {
+      depth = 0;
+      overlay.hidden = true;
+      zone.classList.remove('over');
+    }
+  });
+  addEventListener('dragover', (e) => hasFiles(e) && e.preventDefault());
+  addEventListener('drop', (e) => {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    depth = 0;
+    overlay.hidden = true;
+    zone.classList.remove('over');
+    if (e.dataTransfer.files[0]) importFile(e.dataTransfer.files[0]);
+  });
+}
+
+// 导入的作品：顶部提示这只是预览，并给出下一步
+function renderBanner() {
+  if (!imported) return;
+  const banner = $('#imported-banner');
+  banner.hidden = false;
+  banner.innerHTML = `这是导入的作品，只在这个标签页里预览。满意的话
+    <button data-export="json" class="link">下载作品文件</button>，填好作者和说明后按 CONTRIBUTING.md 提交 PR。
+    <a href="?w=${WORKS[0].id}">回到作品库</a>`;
+  banner.querySelector('[data-export]').onclick = () => exportAs('json');
+}
+
+// ---------- 作品库 ----------
+// 缩略图：正面看过去每一列最前面那格的颜色，按层高比例画
+function thumbnail(w) {
+  const depth = w.layers[0].length;
+  const width = w.layers[0][0].length;
+  const layerH = UNITS[w.unit].height;
+  const scale = Math.max(2, Math.floor(120 / Math.max(width, w.layers.length * layerH)));
+  const canvas = document.createElement('canvas');
+  canvas.width = width * scale;
+  canvas.height = Math.ceil(w.layers.length * layerH * scale);
+  const ctx = canvas.getContext('2d');
+  w.layers.forEach((rows, y) => {
+    const top = canvas.height - (y + 1) * layerH * scale;
+    for (let x = 0; x < width; x++)
+      for (let z = depth - 1; z >= 0; z--) {
+        const ch = [...rows[z]][x];
+        if (ch === '.') continue;
+        ctx.fillStyle = COLORS[w.palette[ch]].hex;
+        ctx.fillRect(x * scale, Math.floor(top), scale, Math.ceil(layerH * scale));
+        break;
+      }
+  });
+  return canvas.toDataURL();
+}
+
+function renderGallery(filter = '') {
+  const q = filter.trim().toLowerCase();
+  const list = WORKS.filter((w) => !q || [w.title, w.description, w.author.name, w.id].some((t) => t.toLowerCase().includes(q)));
+  const cm = (w) => {
+    const h = w.layers.length * UNITS[w.unit].height * 0.8;
+    return `${w.layers[0][0].length}×${w.layers[0].length} 凸点 · 高 ${h.toFixed(1)} cm`;
+  };
+  $('#gallery-grid').innerHTML = list.length
+    ? list
+        .map(
+          (w) => `<a class="card${w.id === work.id && !imported ? ' current' : ''}" href="?w=${w.id}${location.hash}">
+            <div class="thumb"><img alt="" src="${thumbnail(w)}" /></div>
+            <b>${escapeHtml(w.title)}</b>
+            <small>${w.unit === 'plate' ? '薄板' : '砖'} · ${cm(w)}</small>
+            <small>by ${escapeHtml(w.author.name)}</small>
+          </a>`,
+        )
+        .join('')
+    : `<p class="hint">没有找到“${escapeHtml(filter)}”。</p>`;
+}
+
+function setupGallery() {
+  const dialog = $('#gallery');
+  const search = $('#gallery-search');
+  const open = () => {
+    renderGallery(search.value);
+    dialog.showModal();
+    search.focus();
+  };
+  $('#open-gallery').onclick = open;
+  search.oninput = () => renderGallery(search.value);
+  addEventListener('keydown', (e) => {
+    if (e.key.toLowerCase() === 'g' && !e.metaKey && !e.ctrlKey && !['INPUT', 'TEXTAREA'].includes(e.target.tagName) && !dialog.open) open();
+  });
+  // 所有对话框：点右上角 ✕ 或点外面的暗处关掉
+  document.querySelectorAll('dialog').forEach((d) => {
+    d.querySelectorAll('[data-close]').forEach((b) => (b.onclick = () => d.close()));
+    d.addEventListener('click', (e) => e.target === d && d.close());
+  });
 }
 
 // ---------- 拼装步骤 ----------
@@ -266,7 +433,12 @@ const viewer = createViewer($('#view'), model);
 renderHeader();
 renderIntro();
 renderBom();
-setupFiles();
+renderBanner();
+setupExport();
+setupImport();
+setupGallery();
+// 触屏上没有滚轮和右键
+if (matchMedia('(pointer: coarse)').matches) $('#stage-hint').textContent = '单指旋转 · 双指缩放 · 双指拖动平移';
 $('#step-range').max = model.steps.length - 1;
 
 const tooltip = $('#tooltip');

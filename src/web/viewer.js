@@ -44,12 +44,22 @@ export function createViewer(canvas, model) {
   const camera = new THREE.PerspectiveCamera(35, 1, 0.5, 400);
   const controls = new OrbitControls(camera, canvas);
   controls.enableDamping = true;
+  controls.addEventListener('start', () => (zooming = false));
   controls.minDistance = 12;
   controls.maxDistance = 160;
   // 默认视角：右前方稍高，整个模型留一圈边
+  // 拼装步骤里只看已经拼到的高度（至少 35%），不然高的作品一开始的几层小得看不清
+  let viewHeight = height;
+  let zooming = false;
+  const distanceFor = (h) => {
+    const tan = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+    const byHeight = (h * 0.62) / tan;
+    const byWidth = ((x1 - x0) * 0.75) / (tan * camera.aspect);
+    return Math.max(byHeight, byWidth) + (z1 - z0) / 2;
+  };
   const fitCamera = () => {
     const tan = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
-    const byHeight = (height * 0.62) / tan;
+    const byHeight = (viewHeight * 0.62) / tan;
     const byWidth = ((x1 - x0) * 0.75) / (tan * camera.aspect);
     const dist = Math.max(byHeight, byWidth) + (z1 - z0) / 2;
     const dir = new THREE.Vector3(0.5, 0.28, 0.82).normalize();
@@ -125,14 +135,18 @@ export function createViewer(canvas, model) {
   const showAll = () => {
     apply(() => 'solid');
     focusY = height * 0.47;
+    viewHeight = height;
+    zooming = true;
   };
   const showStep = (steps, index) => {
     const done = new Set(steps.slice(0, index).flatMap((s) => s.bricks));
     const current = new Set(steps[index].bricks);
     apply((b) => (current.has(b.id) ? 'current' : done.has(b.id) ? 'solid' : 'hidden'));
     // 镜头跟着正在拼的那一层上下移动
-    const top = Math.max(...steps[index].bricks.map((id) => model.bricks[id].y)) * H;
-    focusY = THREE.MathUtils.clamp(top, height * 0.25, height * 0.6);
+    const top = (Math.max(...steps[index].bricks.map((id) => model.bricks[id].y)) + 1) * H;
+    viewHeight = Math.max(top * 1.15, height * 0.35);
+    focusY = THREE.MathUtils.clamp(top * 0.6, viewHeight * 0.35, height * 0.6);
+    zooming = true;
   };
   const highlight = (match) => apply((b) => (match(b) ? 'solid' : 'ghost'));
 
@@ -167,6 +181,14 @@ export function createViewer(canvas, model) {
       const k = Math.min(1, Math.max(0, (t - d.start) / 380));
       const ease = 1 - (1 - k) ** 3;
       d.m.position.y = d.m.userData.home.y + (1 - ease) * 2.4;
+    }
+    // 平滑地拉近 / 拉远到当前要看的高度；用户自己滚轮缩放后不再干预，直到翻下一步
+    if (zooming) {
+      const offset = camera.position.clone().sub(controls.target);
+      const want = distanceFor(viewHeight);
+      const next = offset.length() + (want - offset.length()) * 0.1;
+      camera.position.copy(controls.target).addScaledVector(offset.normalize(), next);
+      if (Math.abs(want - next) < 0.05) zooming = false;
     }
     const dy = (focusY - controls.target.y) * 0.08;
     if (Math.abs(dy) > 1e-3) {
