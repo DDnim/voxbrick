@@ -6,6 +6,9 @@
   "author": {"name":"voxbrick"},
   "license": "CC0-1.0",
   "unit": "brick",
+  "i18n": {
+    "en": {"title":"Little Robot","description":"A little robot with a square head and body: a black visor like goggles with two blue eyes, a chest screen with red, yellow and green lights, an antenna on top, and arms hanging at its sides.","sections":["Feet","Legs","Body, screen and arms","Neck","Head and visor","Antenna"]}
+  },
   "palette": {"G":"green","K":"black","R":"red","Y":"yellow","b":"lightBlue","d":"darkGray","l":"lightGray","u":"darkBlue"},
   "sections": [
     {"from":0,"to":0,"name":"脚"},

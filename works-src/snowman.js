@@ -15,6 +15,13 @@ export const meta = {
     { from: 14, to: 17, name: '围巾和头' },
     { from: 18, to: 20, name: '礼帽' },
   ],
+  i18n: {
+    en: {
+      title: 'Snowman',
+      description: 'Three stacked snowballs with a black top hat, a red scarf, a carrot nose and two twigs for arms. A good first build: big parts, few colors.',
+      sections: ['Big bottom snowball', 'Middle snowball, buttons and twig arms', 'Scarf and head', 'Top hat'],
+    },
+  },
 };
 
 const CX = 8.5; // 第 8 格的中心

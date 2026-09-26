@@ -41,6 +41,7 @@
 | `seed` |  | 拼砖程序的随机种子，默认 `1`。测试说“没有连成一整块”时，先换几个 seed 试试 |
 | `palette` | ✓ | 一个字符 → 颜色 id。颜色 id 见 [`src/core/catalog.js`](../src/core/catalog.js) 的 `COLORS` |
 | `sections` |  | 拼装步骤标题里显示的部位名，`from`/`to` 是层号（含两端） |
+| `i18n` |  | 翻译，比如 `{ "en": { "title": "...", "description": "...", "sections": ["..."] } }`。`sections` 按顺序对应上面的部位名。页面切到英文时显示这里的内容，缺的字段显示原文 |
 | `layers` | ✓ | 模型本体，见下面 |
 
 ## layers：怎么读

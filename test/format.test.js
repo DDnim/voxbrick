@@ -37,6 +37,13 @@ test('validateWork 能指出常见错误', () => {
   assert.match(errors, /第 0 层第 0 行应该有/);
 });
 
+test('i18n 字段：格式检查、按原样读写', () => {
+  const base = read('../works/snowman.json');
+  assert.deepEqual(validateWork({ ...base, i18n: { en: { title: 'x', sections: ['a'] } } }), ['i18n.en.sections 应该和 sections 一样有 4 个']);
+  assert.ok(validateWork({ ...base, i18n: { English: {} } }).some((e) => e.includes('语言代码')));
+  assert.deepEqual(JSON.parse(stringifyWork(base)).i18n, base.i18n);
+});
+
 test('works-src/ 里用代码画的作品和 works/ 的 JSON 一致（改了代码请运行 npm run works）', async () => {
   const dir = new URL('../works-src/', import.meta.url);
   for (const f of readdirSync(dir).filter((f) => f.endsWith('.js'))) {

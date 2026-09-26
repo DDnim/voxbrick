@@ -6,6 +6,9 @@
   "author": {"name":"voxbrick"},
   "license": "CC0-1.0",
   "unit": "brick",
+  "i18n": {
+    "en": {"title":"Snowman","description":"Three stacked snowballs with a black top hat, a red scarf, a carrot nose and two twigs for arms. A good first build: big parts, few colors.","sections":["Big bottom snowball","Middle snowball, buttons and twig arms","Scarf and head","Top hat"]}
+  },
   "palette": {"K":"black","N":"brown","O":"orange","R":"red","W":"white"},
   "sections": [
     {"from":0,"to":7,"name":"底下的大雪球"},

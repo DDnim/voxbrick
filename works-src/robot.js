@@ -17,6 +17,13 @@ export const meta = {
     { from: 11, to: 14, name: '头和面罩' },
     { from: 15, to: 17, name: '天线' },
   ],
+  i18n: {
+    en: {
+      title: 'Little Robot',
+      description: 'A little robot with a square head and body: a black visor like goggles with two blue eyes, a chest screen with red, yellow and green lights, an antenna on top, and arms hanging at its sides.',
+      sections: ['Feet', 'Legs', 'Body, screen and arms', 'Neck', 'Head and visor', 'Antenna'],
+    },
+  },
 };
 
 export function build() {

@@ -57,6 +57,24 @@ export function validateWork(work) {
   });
   if (filled === 0) err('作品里一格都没有');
 
+  // 翻译：i18n.<语言> = { title, description, sections: [按顺序的部位名] }，都可以省略
+  if (work.i18n !== undefined) {
+    if (!work.i18n || typeof work.i18n !== 'object' || Array.isArray(work.i18n)) err('i18n 必须是对象，比如 { "en": { "title": "..." } }');
+    else
+      for (const [code, tr] of Object.entries(work.i18n)) {
+        if (!/^[a-z]{2}(-[A-Z]{2})?$/.test(code)) err(`i18n 的键 "${code}" 必须是语言代码，比如 en`);
+        if (!tr || typeof tr !== 'object') err(`i18n.${code} 必须是对象`);
+        else {
+          for (const k of ['title', 'description'])
+            if (tr[k] !== undefined && typeof tr[k] !== 'string') err(`i18n.${code}.${k} 必须是字符串`);
+          if (tr.sections !== undefined && (!Array.isArray(tr.sections) || tr.sections.some((n) => typeof n !== 'string')))
+            err(`i18n.${code}.sections 必须是字符串数组`);
+          else if (tr.sections && tr.sections.length !== (work.sections ?? []).length)
+            err(`i18n.${code}.sections 应该和 sections 一样有 ${(work.sections ?? []).length} 个`);
+        }
+      }
+  }
+
   for (const s of work.sections ?? [])
     if (!Number.isInteger(s.from) || !Number.isInteger(s.to) || s.from > s.to || typeof s.name !== 'string')
       err(`sections 里的 ${JSON.stringify(s)} 格式不对（需要 from ≤ to 和 name）`);
@@ -129,12 +147,16 @@ export function gridToWork(grid, meta) {
 
 // 固定键的顺序、每行一条字符串，方便在 PR 里看 diff
 export function stringifyWork(work) {
-  const { layers, sections, palette, ...head } = work;
+  const { layers, sections, palette, i18n, ...head } = work;
   const order = ['format', 'id', 'title', 'description', 'author', 'license', 'unit', 'seed'];
   const meta = Object.fromEntries(
     [...order.filter((k) => k in head), ...Object.keys(head).filter((k) => !order.includes(k))].map((k) => [k, head[k]]),
   );
   const lines = Object.entries(meta).map(([k, v]) => `  ${JSON.stringify(k)}: ${JSON.stringify(v)}`);
+  if (i18n)
+    lines.push(
+      `  "i18n": {\n${Object.entries(i18n).map(([code, tr]) => `    ${JSON.stringify(code)}: ${JSON.stringify(tr)}`).join(',\n')}\n  }`,
+    );
   lines.push(`  "palette": ${JSON.stringify(palette)}`);
   if (sections?.length)
     lines.push(`  "sections": [\n${sections.map((s) => `    ${JSON.stringify(s)}`).join(',\n')}\n  ]`);

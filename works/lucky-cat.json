@@ -6,6 +6,9 @@
   "author": {"name":"voxbrick"},
   "license": "CC0-1.0",
   "unit": "plate",
+  "i18n": {
+    "en": {"title":"Lucky Cat","description":"A sitting white lucky cat: one paw raised to beckon, the other holding a gold coin, a gold bell on a red collar, orange and black patches on its head, and pink inside the ears.","sections":["Front paws and lower body","Body, coin and bell","Red collar","Mouth, nose, whiskers and raised paw","Eyes and head patches","Ears"]}
+  },
   "palette": {"K":"black","N":"brown","O":"orange","P":"pink","R":"red","W":"white","Y":"yellow","y":"gold"},
   "sections": [
     {"from":0,"to":3,"name":"前爪和身体底部"},

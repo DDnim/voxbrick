@@ -27,7 +27,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const ready = () => page.waitForFunction(() => window.__voxbrick, { timeout: 30000 });
 
 for (const id of ids) {
-  await page.goto(url(`?w=${id}#model`));
+  await page.goto(url(`?w=${id}&lang=zh#model`));
   await ready();
   const n = await page.evaluate(() => window.__voxbrick.model.steps.length);
   await wait(1200);
@@ -43,7 +43,7 @@ for (const id of ids) {
 // 导入：把第一个作品导出成 .vox 再从页面导入
 const vox = `${outDir}/import-test.vox`;
 await writeFile(vox, writeVox(workToGrid(JSON.parse(readFileSync(`${root}works/${ids[0]}.json`, 'utf8')))));
-await page.goto(url(`?w=${ids[0]}#steps-5`));
+await page.goto(url(`?w=${ids[0]}&lang=zh#steps-5`));
 await ready();
 await page.click('#open-gallery');
 await wait(500);
@@ -66,10 +66,25 @@ await page.click('#open-export');
 await wait(200);
 await page.screenshot({ path: `${outDir}/export-menu.png` });
 
+// 英文界面：从中文页面点语言按钮切过去，之后的页面都保持英文
+await page.goto(url(`?w=${ids.at(-1)}&lang=zh#steps-3`));
+await ready();
+await Promise.all([page.waitForNavigation(), page.click('#lang-toggle')]);
+await ready();
+await wait(1000);
+await page.screenshot({ path: `${outDir}/en-step.png` });
+await page.evaluate(() => window.__voxbrick.setTab('parts'));
+await wait(500);
+await page.screenshot({ path: `${outDir}/en-parts.png` });
+await page.click('#open-gallery');
+await wait(500);
+await page.screenshot({ path: `${outDir}/en-gallery.png` });
+const en = await page.evaluate(() => ({ lang: document.documentElement.lang, title: document.title, button: document.querySelector('#lang-toggle').textContent }));
+
 await page.setViewport({ width: 390, height: 844, isMobile: true });
 await page.goto(url(`?w=${ids[0]}#steps-1`));
 await ready();
 await wait(1000);
 await page.screenshot({ path: `${outDir}/mobile.png` });
-console.log(errors.length ? 'ERRORS:\n' + errors.join('\n') : 'no errors', JSON.stringify(imported));
+console.log(errors.length ? 'ERRORS:\n' + errors.join('\n') : 'no errors', JSON.stringify(imported), JSON.stringify(en));
 await browser.close();

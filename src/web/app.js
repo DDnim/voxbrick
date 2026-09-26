@@ -3,6 +3,7 @@ import { UNITS } from '../core/catalog.js';
 import { validateWork, workToGrid, gridToWork, stringifyWork } from '../core/work.js';
 import { readVox, writeVox } from '../core/vox.js';
 import { createViewer } from './viewer.js';
+import { lang, LANGS, switchLang, t, unitWord, colorName, partName, partSize, localizeWork, applyStatic } from './i18n.js';
 import WORKS from 'virtual:works';
 
 // ?w=<作品 id>；导入的作品放在 sessionStorage 里，用 ?w=imported 打开
@@ -19,11 +20,12 @@ function currentWork() {
   return WORKS.find((w) => w.id === id) ?? WORKS[0];
 }
 
+// work 是原文件（导出用），shown 是换成当前语言后的（显示用）
 const work = currentWork();
-const model = buildModel(work);
+const shown = localizeWork(work);
+const model = buildModel(shown);
 const imported = params.get('w') === IMPORTED;
-const unit = UNITS[work.unit];
-const colorName = (c) => COLORS[c].zh;
+const u = unitWord(work.unit);
 const partCount = model.bricks.length;
 
 // ---------- 小图标：俯视的一块零件 ----------
@@ -43,29 +45,27 @@ const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt
 
 // ---------- 顶部 ----------
 function renderHeader() {
-  document.title = `${work.title} · Voxbrick 积木拼装图`;
-  $('#work-title').textContent = work.title;
+  document.title = t('docTitle', shown.title);
+  $('#work-title').textContent = shown.title;
   $('#work-count').textContent = WORKS.length;
   const colors = new Set(model.bom.map((r) => r.color)).size;
   const parts = new Set(model.bom.map((r) => r.part)).size;
   const [w, d, h] = model.size.cm.map((v) => v.toFixed(1));
   $('#summary').innerHTML = `
-    <span><b>${partCount}</b> 块${unit.zh}</span>
-    <span><b>${parts}</b> 种尺寸 · <b>${colors}</b> 种颜色</span>
-    <span>宽 ${w} × 深 ${d} × 高 ${h} cm（${model.size.studs[0]}×${model.size.studs[1]} 凸点，${model.size.layers} 层）</span>
-    <span class="${model.componentCount === 1 ? 'ok' : 'ng'}">${model.componentCount === 1 ? '✓ 所有零件连成一整块' : `✗ 分成 ${model.componentCount} 块`}</span>
-    <span class="${model.balance.inside ? 'ok' : 'ng'}">${model.balance.inside ? '✓ 重心落在底面范围内，能站稳' : '✗ 重心在底面外'}</span>`;
+    <span>${t('pieces', partCount, u)}</span>
+    <span>${t('kinds', parts, colors)}</span>
+    <span>${t('dims', w, d, h, model.size.studs[0], model.size.studs[1], model.size.layers)}</span>
+    <span class="${model.componentCount === 1 ? 'ok' : 'ng'}">${model.componentCount === 1 ? t('connected') : t('split', model.componentCount)}</span>
+    <span class="${model.balance.inside ? 'ok' : 'ng'}">${model.balance.inside ? t('balanced') : t('unbalanced')}</span>`;
 }
 
 function renderIntro() {
   const author = work.author.url
     ? `<a href="${escapeHtml(work.author.url)}" target="_blank" rel="noopener">${escapeHtml(work.author.name)}</a>`
     : escapeHtml(work.author.name);
-  $('#intro-title').textContent = work.title;
-  $('#intro-body').textContent = work.description;
-  $('#intro-meta').innerHTML = `作者 ${author} · 许可 ${escapeHtml(work.license)} · ${
-    work.unit === 'plate' ? '用薄板拼（1 层 = 3.2mm，3 层 = 1 块砖高）' : '用砖拼（1 层 = 9.6mm）'
-  }`;
+  $('#intro-title').textContent = shown.title;
+  $('#intro-body').textContent = shown.description;
+  $('#intro-meta').innerHTML = t('introMeta', author, escapeHtml(work.license), work.unit);
 }
 
 // ---------- 零件清单 ----------
@@ -77,7 +77,7 @@ function renderBom() {
     groups.get(r.color).push(r);
   }
   $('#bom').innerHTML =
-    `<p class="hint">点一行，3D 里只亮出这些零件；再点一次取消。<br>某些颜色的大块零件不好买时，可以用同色的小块拼出同样的长度代替。</p>` +
+    `<p class="hint">${t('bomHint')}</p>` +
     [...groups.entries()]
       .map(([color, rows]) => {
         const c = COLORS[color];
@@ -85,7 +85,7 @@ function renderBom() {
         return `<section class="color-group">
           <button class="color-head" data-color="${color}">
             <i class="swatch" style="background:${c.hex}"></i>
-            <span class="cname">${c.zh}</span>
+            <span class="cname">${colorName(color)}</span>
             <span class="cmeta">${c.hex}</span>
             <span class="count">${total}</span>
           </button>
@@ -93,7 +93,7 @@ function renderBom() {
             .map(
               (r) => `<button class="bom-row" data-color="${color}" data-part="${r.part}">
                 <span class="icon">${brickIcon(r.part, color)}</span>
-                <span class="pname">${PART_BY_ID[r.part].name}</span>
+                <span class="pname">${partName(r.part)}</span>
                 <span class="pid">${r.part}</span>
                 <span class="count">× ${r.count}</span>
               </button>`,
@@ -102,7 +102,7 @@ function renderBom() {
         </section>`;
       })
       .join('') +
-    `<div class="exports"><button data-export="csv">下载零件清单（CSV）</button></div>`;
+    `<div class="exports"><button data-export="csv">${t('bomCsv')}</button></div>`;
 
   $('#bom').addEventListener('click', (e) => {
     if (e.target.closest('[data-export]')) return exportAs('csv');
@@ -135,10 +135,10 @@ function exportAs(kind) {
   if (kind === 'json') download(`${work.id}.json`, stringifyWork(work), 'application/json');
   if (kind === 'vox') download(`${work.id}.vox`, writeVox(workToGrid(work)), 'application/octet-stream');
   if (kind === 'csv') {
-    const lines = [['零件', '名称', '颜色', '颜色 id', '色值', '数量'].join(',')];
+    const lines = [t('csvHeader').join(',')];
     for (const r of model.bom) {
       const c = COLORS[r.color];
-      lines.push([r.part, PART_BY_ID[r.part].name, c.zh, r.color, c.hex, r.count].join(','));
+      lines.push([r.part, partName(r.part), colorName(r.color), r.color, c.hex, r.count].join(','));
     }
     download(`${work.id}-parts.csv`, '﻿' + lines.join('\n'), 'text/csv');
   }
@@ -192,7 +192,7 @@ async function importFile(file) {
     if (file.name.toLowerCase().endsWith('.vox')) {
       pendingVox = { grid: readVox(await file.arrayBuffer()), name: file.name.replace(/\.vox$/i, '') };
       const b = pendingVox.grid.bounds();
-      $('#import-file-name').textContent = `${file.name} · ${b.x1 - b.x0}×${b.z1 - b.z0} 格，高 ${b.y1 - b.y0} 格，${pendingVox.grid.size} 个体素`;
+      $('#import-file-name').textContent = t('voxInfo', file.name, b.x1 - b.x0, b.z1 - b.z0, b.y1 - b.y0, pendingVox.grid.size);
       $('#import-title').value = pendingVox.name;
       $('#import-vox-options').hidden = false;
     } else if (file.name.toLowerCase().endsWith('.json')) {
@@ -200,10 +200,10 @@ async function importFile(file) {
       try {
         next = JSON.parse(await file.text());
       } catch (e) {
-        return showImportErrors([`不是合法的 JSON：${e.message}`]);
+        return showImportErrors([t('badJson', e.message)]);
       }
       preview(next);
-    } else showImportErrors(['只支持 .json（作品文件）和 .vox（MagicaVoxel）']);
+    } else showImportErrors([t('badKind')]);
   } catch (e) {
     showImportErrors([e.message]);
   }
@@ -228,8 +228,8 @@ function setupImport() {
       gridToWork(pendingVox.grid, {
         id: slug(pendingVox.name),
         title,
-        description: `${title}（从 MagicaVoxel 导入）`,
-        author: { name: '（填你的名字）' },
+        description: t('voxDescription', title),
+        author: { name: t('authorPlaceholder') },
         license: 'CC-BY-4.0',
         unit: document.querySelector('input[name="unit"]:checked').value,
       }),
@@ -269,9 +269,7 @@ function renderBanner() {
   if (!imported) return;
   const banner = $('#imported-banner');
   banner.hidden = false;
-  banner.innerHTML = `这是导入的作品，只在这个标签页里预览。满意的话
-    <button data-export="json" class="link">下载作品文件</button>，填好作者和说明后按 CONTRIBUTING.md 提交 PR。
-    <a href="?w=${WORKS[0].id}">回到作品库</a>`;
+  banner.innerHTML = t('banner', `?w=${WORKS[0].id}`);
   banner.querySelector('[data-export]').onclick = () => exportAs('json');
 }
 
@@ -302,23 +300,22 @@ function thumbnail(w) {
 
 function renderGallery(filter = '') {
   const q = filter.trim().toLowerCase();
-  const list = WORKS.filter((w) => !q || [w.title, w.description, w.author.name, w.id].some((t) => t.toLowerCase().includes(q)));
-  const cm = (w) => {
-    const h = w.layers.length * UNITS[w.unit].height * 0.8;
-    return `${w.layers[0][0].length}×${w.layers[0].length} 凸点 · 高 ${h.toFixed(1)} cm`;
-  };
+  // 中英文的标题、说明都能搜到
+  const text = (w) => [w.title, w.description, w.author.name, w.id, ...Object.values(w.i18n ?? {}).flatMap((tr) => [tr.title, tr.description])];
+  const list = WORKS.filter((w) => !q || text(w).some((s) => s?.toLowerCase().includes(q)));
+  const cm = (w) => t('cardSize', w.layers[0][0].length, w.layers[0].length, (w.layers.length * UNITS[w.unit].height * 0.8).toFixed(1));
   $('#gallery-grid').innerHTML = list.length
     ? list
         .map(
           (w) => `<a class="card${w.id === work.id && !imported ? ' current' : ''}" href="?w=${w.id}${location.hash}">
             <div class="thumb"><img alt="" src="${thumbnail(w)}" /></div>
-            <b>${escapeHtml(w.title)}</b>
-            <small>${w.unit === 'plate' ? '薄板' : '砖'} · ${cm(w)}</small>
+            <b>${escapeHtml(localizeWork(w).title)}</b>
+            <small>${t('cardUnit', w.unit)} · ${cm(w)}</small>
             <small>by ${escapeHtml(w.author.name)}</small>
           </a>`,
         )
         .join('')
-    : `<p class="hint">没有找到“${escapeHtml(filter)}”。</p>`;
+    : `<p class="hint">${t('notFound', escapeHtml(filter))}</p>`;
 }
 
 function setupGallery() {
@@ -374,7 +371,7 @@ function layerMap(y, { current, done, title }) {
   return `<figure class="layer-map">
     <figcaption>${title}</figcaption>
     <svg viewBox="-2 -2 ${W + 4} ${H + 4}" width="${W + 4}" height="${H + 4}">${svg}</svg>
-    <div class="front">↓ 正面</div>
+    <div class="front">${t('front')}</div>
   </figure>`;
 }
 
@@ -390,35 +387,32 @@ function renderStep() {
   let text;
   let maps;
   if (step.kind === 'layer') {
-    title = `第 ${step.y + 1} 层${step.parts > 1 ? `（${step.part}/${step.parts}）` : ''}${section}`;
-    text = `把下面 ${count} 块${unit.zh}按到第 ${step.y} 层上面（橙色框是这一步要放的）。`;
-    if (step.y === 0) text = `从最底层开始：把这 ${count} 块${unit.zh}摆在桌面上（橙色框）。`;
-    maps = layerMap(step.y, { current, done, title: `第 ${step.y + 1} 层 俯视图` });
+    title = `${t('layerN', step.y + 1)}${step.parts > 1 ? t('partOf', step.part, step.parts) : ''}${section}`;
+    text = step.y === 0 ? t('firstStep', count, u) : t('layerStep', count, u, step.y);
+    maps = layerMap(step.y, { current, done, title: t('layerMap', step.y + 1) });
   } else {
     const ys = [...new Set(step.bricks.map((id) => model.bricks[id].y))].sort((a, b) => b - a);
     const multi = step.groups.some((g) => g.length > 1);
-    title = `挂上悬空的${unit.zh}${section}`;
-    text = multi
-      ? `这 ${step.groups.length} 组${unit.zh}下面没有东西托着（比如垂下来的手臂）。先把每组按图叠好，再从下面扣到第 ${step.y + 1} 层的底下。`
-      : `这 ${count} 块${unit.zh}伸出在外面、下面是空的，要等第 ${step.y + 1} 层放好后，从下面往上扣住。`;
-    maps = ys.map((y) => layerMap(y, { current, done, title: `第 ${y + 1} 层 俯视图` })).join('');
+    title = `${t('hangTitle', u)}${section}`;
+    text = multi ? t('hangGroups', step.groups.length, u, step.y + 1) : t('hangSingle', count, u, step.y + 1);
+    maps = ys.map((y) => layerMap(y, { current, done, title: t('layerMap', y + 1) })).join('');
   }
 
   $('#step-title').textContent = title;
-  $('#step-no').textContent = `第 ${stepIndex + 1} 步 / 共 ${steps.length} 步`;
+  $('#step-no').textContent = t('stepNo', stepIndex + 1, steps.length);
   $('#step-range').value = stepIndex;
   $('#step-text').textContent = text;
   $('#step-parts').innerHTML = step.bom
     .map(
-      (r) => `<div class="chip" title="${PART_BY_ID[r.part].name} · ${colorName(r.color)}">
-        ${brickIcon(r.part, r.color, 8)}<span>${r.count}×</span><small>${PART_BY_ID[r.part].name.replace(/^[砖板] /, '')} ${colorName(r.color)}</small>
+      (r) => `<div class="chip" title="${partName(r.part)} · ${colorName(r.color)}">
+        ${brickIcon(r.part, r.color, 8)}<span>${r.count}×</span><small>${partSize(r.part)} ${colorName(r.color)}</small>
       </div>`,
     )
     .join('');
   $('#step-maps').innerHTML = maps;
   const placed = done.size + current.size;
   $('#step-progress').style.width = `${(placed / partCount) * 100}%`;
-  $('#step-count').textContent = `已用 ${placed} / ${partCount} 块`;
+  $('#step-count').textContent = t('used', placed, partCount);
   viewer.showStep(steps, stepIndex);
 }
 
@@ -429,6 +423,11 @@ function go(i) {
 }
 
 // ---------- 页面 ----------
+applyStatic();
+// 语言按钮显示“另一种语言”，点了就切过去
+const otherLang = Object.keys(LANGS).find((l) => l !== lang);
+$('#lang-toggle').textContent = otherLang === 'en' ? 'EN' : '中文';
+$('#lang-toggle').onclick = () => switchLang(otherLang);
 const viewer = createViewer($('#view'), model);
 renderHeader();
 renderIntro();
@@ -438,14 +437,14 @@ setupExport();
 setupImport();
 setupGallery();
 // 触屏上没有滚轮和右键
-if (matchMedia('(pointer: coarse)').matches) $('#stage-hint').textContent = '单指旋转 · 双指缩放 · 双指拖动平移';
+if (matchMedia('(pointer: coarse)').matches) $('#stage-hint').textContent = t('stageHintTouch');
 $('#step-range').max = model.steps.length - 1;
 
 const tooltip = $('#tooltip');
 viewer.setHover((b, e) => {
   if (!b) return (tooltip.hidden = true);
   tooltip.hidden = false;
-  tooltip.innerHTML = `${brickIcon(b.part, b.color, 7)} <b>${PART_BY_ID[b.part].name}</b> · ${colorName(b.color)} · 第 ${b.y + 1} 层`;
+  tooltip.innerHTML = `${brickIcon(b.part, b.color, 7)} <b>${partName(b.part)}</b> · ${colorName(b.color)} · ${t('tooltipLayer', b.y + 1)}`;
   const r = $('#view').getBoundingClientRect();
   tooltip.style.left = `${e.clientX - r.left + 14}px`;
   tooltip.style.top = `${e.clientY - r.top + 14}px`;

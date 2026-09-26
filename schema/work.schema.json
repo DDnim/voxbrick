@@ -19,6 +19,20 @@
     "license": { "enum": ["CC0-1.0", "CC-BY-4.0", "CC-BY-SA-4.0"] },
     "unit": { "enum": ["brick", "plate"], "description": "brick：1 层 = 1 块砖高（9.6mm）；plate：1 层 = 1 块薄板高（3.2mm）" },
     "seed": { "type": "integer", "description": "拼砖程序的随机种子，默认 1。拼不连通时可以换一个试试" },
+    "i18n": {
+      "type": "object",
+      "description": "翻译：语言代码 → 标题、说明、部位名。缺的字段显示原文",
+      "propertyNames": { "pattern": "^[a-z]{2}(-[A-Z]{2})?$" },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "title": { "type": "string" },
+          "description": { "type": "string" },
+          "sections": { "type": "array", "items": { "type": "string" }, "description": "和 sections 一一对应的部位名" }
+        }
+      }
+    },
     "palette": {
       "type": "object",
       "description": "字符 → 颜色 id",

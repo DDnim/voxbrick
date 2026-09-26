@@ -17,6 +17,7 @@ npm test
 ```
 
 页面用 `?w=<作品 id>` 切换作品，比如 `dist/voxbrick.html?w=lucky-cat`。
+右上角的 EN / 中文 按钮切换界面语言（记在浏览器里；也可以用 `?lang=en` 指定）。
 
 ## 现在有的作品
 

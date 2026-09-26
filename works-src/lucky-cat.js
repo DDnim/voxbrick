@@ -17,6 +17,13 @@ export const meta = {
     { from: 36, to: 48, name: '眼睛和头顶的花斑' },
     { from: 49, to: 56, name: '耳朵' },
   ],
+  i18n: {
+    en: {
+      title: 'Lucky Cat',
+      description: 'A sitting white lucky cat: one paw raised to beckon, the other holding a gold coin, a gold bell on a red collar, orange and black patches on its head, and pink inside the ears.',
+      sections: ['Front paws and lower body', 'Body, coin and bell', 'Red collar', 'Mouth, nose, whiskers and raised paw', 'Eyes and head patches', 'Ears'],
+    },
+  },
 };
 
 // 脸的正面贴图，从下往上，第 i 列是 x=4+i（头宽 12 格）
